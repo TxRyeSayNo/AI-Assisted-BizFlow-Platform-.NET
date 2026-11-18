@@ -1,0 +1,16 @@
+**/bin
+**/obj
+**/TestResults
+**/test-results*
+**/coverage
+**/.env
+**/.env.*
+**/*.pfx
+**/*.pem
+**/*.key
+.git
+.vs
+.vscode
+docs
+tests
+*.md

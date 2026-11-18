@@ -1,0 +1,22 @@
+# Build and compilation outputs
+**/bin/
+**/obj/
+**/TestResults/
+**/coverage/
+
+# Visual Studio & IDE files
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Environment and sensitive keys
+.env
+.env.*
+!.env.example
+*.pfx
+*.pem
+*.key

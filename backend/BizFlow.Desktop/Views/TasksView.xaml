@@ -1,0 +1,466 @@
+<UserControl x:Class="BizFlow.Desktop.Views.TasksView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="24,18">
+
+            <!-- ==========================================================
+                 MODE 1: TASK LIST DIRECTORY
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveMode, Converter={StaticResource EqualToVis}, ConverterParameter=List}">
+                <DockPanel Margin="0,0,0,14">
+                    <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                        <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                                Visibility="{Binding CanCreateTask, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding OpenAiDecompositionCommand}"
+                                Content="🤖 Phân rã kế hoạch bằng AI" />
+                        <Button Style="{StaticResource PrimaryButtonStyle}"
+                                Visibility="{Binding CanCreateTask, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding OpenCreateTaskCommand}"
+                                Content="+ Tạo nhiệm vụ mới" />
+                    </WrapPanel>
+                    <StackPanel>
+                        <TextBlock Text="Quản lý Nhiệm vụ (Task Management)" Style="{StaticResource PageTitleTextStyle}" />
+                        <TextBlock Text="Theo dõi vòng đời công việc, phân công nhân sự, nộp bằng chứng bàn giao và nghiệm thu kết quả."
+                                   Foreground="#64748B" FontSize="13" Margin="0,2,0,0" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Filter Bar -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="14" Margin="0,0,0,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                            <TextBlock Text="Tìm kiếm tiêu đề nhiệm vụ" Style="{StaticResource FieldLabelTextStyle}" />
+                            <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                            <TextBlock Text="Trạng thái" Style="{StaticResource FieldLabelTextStyle}" />
+                            <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Margin="0,0,10,0">
+                            <TextBlock Text="Mức độ ưu tiên" Style="{StaticResource FieldLabelTextStyle}" />
+                            <ComboBox ItemsSource="{Binding PriorityOptions}" SelectedItem="{Binding SelectedPriority}" Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+
+                        <Button Grid.Column="3" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Bottom" Margin="0,0,6,0"
+                                Command="{Binding LoadCommand}" Content="Lọc dữ liệu" />
+                        <Button Grid.Column="4" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Bottom"
+                                Command="{Binding ResetFiltersCommand}" Content="Đặt lại" />
+                    </Grid>
+                </Border>
+
+                <!-- Tasks DataGrid -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="0">
+                    <StackPanel>
+                        <DataGrid ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTaskRow}"
+                                  Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="380">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Tiêu đề nhiệm vụ" Binding="{Binding Title}" Width="2.5*" FontWeight="SemiBold" />
+                                <DataGridTemplateColumn Header="Trạng thái" Width="130">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{Binding Status, Converter={StaticResource StatusToBg}}" CornerRadius="6" Padding="8,3" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0">
+                                                <TextBlock Text="{Binding Status}" Foreground="{Binding Status, Converter={StaticResource StatusToFg}}" FontSize="11.5" FontWeight="Bold" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Ưu tiên" Width="105">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Priority}" Foreground="{Binding Priority, Converter={StaticResource PriorityToBrush}}" FontWeight="Bold" VerticalAlignment="Center" Margin="6,0" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Người / Phòng phụ trách" Binding="{Binding AssigneeDisplay}" Width="1.4*" />
+                                <DataGridTextColumn Header="Hạn chót" Binding="{Binding DeadlineDisplay}" Width="140" />
+                                <DataGridTemplateColumn Header="Thao tác" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource SecondaryButtonStyle}" Padding="10,4" FontSize="12"
+                                                    Command="{Binding DataContext.InspectTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="Chi tiết →" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Pagination Footer -->
+                        <DockPanel Margin="14,10">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Style="{StaticResource SecondaryButtonStyle}" Padding="12,5" Margin="0,0,6,0"
+                                        Command="{Binding PreviousPageCommand}" Content="← Trang trước" />
+                                <Button Style="{StaticResource SecondaryButtonStyle}" Padding="12,5"
+                                        Command="{Binding NextPageCommand}" Content="Trang sau →" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding PageSummary}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569" />
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ==========================================================
+                 MODE 2: CREATE TASK / SUBTASK WITH AI ASSISTANCE
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveMode, Converter={StaticResource EqualToVis}, ConverterParameter=Create}">
+                <DockPanel Margin="0,0,0,14">
+                    <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding BackToListCommand}" Content="← Quay lại danh sách" Margin="0,0,14,0" />
+                    <TextBlock Text="Khởi tạo Nhiệm vụ Mới (Có Trợ lý AI hỗ trợ)" Style="{StaticResource PageTitleTextStyle}" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <!-- AI Task Assistance Card -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Background="#F0F7FF" BorderBrush="#93C5FD" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="✨ TRỢ LÝ AI SOẠN THẢO &amp; PHÂN RÃ NHIỆM VỤ (FR-AI-001 / FR-AI-004)" FontSize="12" FontWeight="Bold" Foreground="#17436F" Margin="0,0,0,6" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding AiPromptText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            <Button Grid.Column="1" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0"
+                                    Command="{Binding AssistWithAiCommand}" Content="✨ AI Soạn Bản Thảo" />
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"
+                                    Command="{Binding BreakdownWithAiCommand}" Content="🌿 AI Gợi ý Checklist" />
+                        </Grid>
+                        <TextBlock Text="{Binding AiDraftFeedback}" Foreground="#145DA0" FontWeight="SemiBold" FontSize="12" Margin="0,6,0,0"
+                                   Visibility="{Binding AiDraftFeedback, Converter={StaticResource NullToVis}}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Create Form Card -->
+                <Border Style="{StaticResource EnterpriseCardStyle}">
+                    <StackPanel>
+                        <Border Background="#EAF4FF" CornerRadius="6" Padding="10,6" Margin="0,0,0,12"
+                                Visibility="{Binding CreateParentTaskTitle, Converter={StaticResource NullToVis}}">
+                            <TextBlock FontWeight="SemiBold" Foreground="#17436F">
+                                <Run Text="🔗 Nhiệm vụ cha liên kết: " />
+                                <Run Text="{Binding CreateParentTaskTitle, Mode=OneWay}" />
+                            </TextBlock>
+                        </Border>
+
+                        <TextBlock Text="Tiêu đề nhiệm vụ *" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBox Text="{Binding CreateTitle, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,12" />
+
+                        <TextBlock Text="Mô tả chi tiết công việc" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBox Text="{Binding CreateDescription, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}"
+                                 AcceptsReturn="True" Height="85" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
+
+                        <UniformGrid Columns="2" Margin="0,0,0,12">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Mức độ ưu tiên *" Style="{StaticResource FieldLabelTextStyle}" />
+                                <ComboBox ItemsSource="{Binding CreatePriorityOptions}" SelectedItem="{Binding CreatePriority}" Style="{StaticResource ModernComboBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="8,0,0,0">
+                                <TextBlock Text="Hạn chót hoàn thành (yyyy-MM-dd HH:mm)" Style="{StaticResource FieldLabelTextStyle}" />
+                                <TextBox Text="{Binding CreateDeadlineText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="Danh mục kiểm tra (Checklist - mỗi dòng 1 hạng mục)" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBox Text="{Binding CreateChecklistText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}"
+                                 AcceptsReturn="True" Height="95" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16" />
+
+                        <WrapPanel>
+                            <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SubmitCreateTaskCommand}" Content="🚀 Lưu &amp; Khởi tạo Nhiệm vụ (DRAFT)" Margin="0,0,10,0" />
+                            <Button Style="{StaticResource SecondaryButtonStyle}" Command="{Binding BackToListCommand}" Content="Hủy bỏ" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ==========================================================
+                 MODE 3: AI TASK DECOMPOSITION PREVIEW & BATCH CONFIRM
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveMode, Converter={StaticResource EqualToVis}, ConverterParameter=AiDecomposition}">
+                <DockPanel Margin="0,0,0,14">
+                    <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding BackToListCommand}" Content="← Quay lại danh sách" Margin="0,0,14,0" />
+                    <TextBlock Text="Phân rã Kế hoạch Công việc bằng AI &amp; Khởi tạo Hàng loạt" Style="{StaticResource PageTitleTextStyle}" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <Border Style="{StaticResource EnterpriseCardStyle}" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="Nhập mục tiêu hoặc kế hoạch tổng thể để AI bóc tách thành các nhánh nhiệm vụ / yêu cầu hỗ trợ:" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBox Text="{Binding DecompositionPrompt, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}"
+                                 AcceptsReturn="True" Height="75" TextWrapping="Wrap" Margin="0,0,0,10" />
+                        <WrapPanel>
+                            <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding PreviewDecompositionCommand}" Content="🔍 AI Phân tích &amp; Xem trước Đề xuất (Không ghi DB)" Margin="0,0,10,0" />
+                            <Button Style="{StaticResource SecondaryButtonStyle}" Command="{Binding ConfirmDecompositionCommand}" Content="✅ Xác nhận Tạo Hàng loạt các Nhánh đã chọn" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="0">
+                    <DataGrid ItemsSource="{Binding DecompositionCandidates}" Style="{StaticResource EnterpriseDataGridStyle}" IsReadOnly="False" MinHeight="320">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="Chọn" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="60" />
+                            <DataGridTextColumn Header="Tiêu đề nhánh" Binding="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Width="2*" />
+                            <DataGridTextColumn Header="Loại" Binding="{Binding Type, UpdateSourceTrigger=PropertyChanged}" Width="120" />
+                            <DataGridTextColumn Header="Phòng ban dự kiến" Binding="{Binding DepartmentName, UpdateSourceTrigger=PropertyChanged}" Width="1.3*" />
+                            <DataGridTextColumn Header="Ưu tiên" Binding="{Binding Priority, UpdateSourceTrigger=PropertyChanged}" Width="90" />
+                            <DataGridTextColumn Header="Số ngày" Binding="{Binding SuggestedDurationDays, UpdateSourceTrigger=PropertyChanged}" Width="80" />
+                            <DataGridTextColumn Header="Checklist" Binding="{Binding ChecklistText, UpdateSourceTrigger=PropertyChanged}" Width="1.5*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+            </StackPanel>
+
+            <!-- ==========================================================
+                 MODE 4: TASK DETAIL & LIFECYCLE EXECUTION INSPECTOR
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveMode, Converter={StaticResource EqualToVis}, ConverterParameter=Detail}">
+                <DockPanel Margin="0,0,0,14">
+                    <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding BackToListCommand}" Content="← Danh sách nhiệm vụ" Margin="0,0,14,0" />
+                    <WrapPanel DockPanel.Dock="Right">
+                        <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                                Command="{Binding EvaluateRiskCommand}" Content="🛡️ AI Đánh giá Rủi ro" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                                Command="{Binding SummarizeProgressCommand}" Content="📊 AI Tóm tắt Tiến độ" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                                Visibility="{Binding CanCreateSubtask, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding OpenCreateSubtaskCommand}" Content="+ Tạo nhiệm vụ con" />
+                        <Button Style="{StaticResource DangerButtonStyle}"
+                                Visibility="{Binding CanArchiveCurrentTask, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding ArchiveTaskCommand}" Content="📦 Lưu trữ hồ sơ" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding TaskDetail.Task.Title}" Style="{StaticResource PageTitleTextStyle}" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <!-- AI Risk & Progress Banner -->
+                <Border Background="#F0F7FF" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,0,0,14"
+                        Visibility="{Binding AiEvaluationText, Converter={StaticResource NullToVis}}">
+                    <TextBlock Text="{Binding AiEvaluationText}" Foreground="#0B2A4A" FontSize="12.5" TextWrapping="Wrap" LineHeight="19" />
+                </Border>
+
+                <!-- Metadata Overview Card -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Margin="0,0,0,14">
+                    <StackPanel>
+                        <UniformGrid Columns="4" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="TRẠNG THÁI HIỆN TẠI" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                <Border Background="{Binding TaskDetail.Task.Status, Converter={StaticResource StatusToBg}}" CornerRadius="6" Padding="10,4" HorizontalAlignment="Left" Margin="0,4,0,0">
+                                    <TextBlock Text="{Binding TaskDetail.Task.Status}" Foreground="{Binding TaskDetail.Task.Status, Converter={StaticResource StatusToFg}}" FontWeight="ExtraBold" />
+                                </Border>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="MỨC ĐỘ ƯU TIÊN" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                <TextBlock Text="{Binding TaskDetail.Task.Priority}" FontWeight="Bold" FontSize="14" Foreground="#17436F" Margin="0,6,0,0" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="NGƯỜI / ĐƠN VỊ THỰC HIỆN" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                <TextBlock Text="{Binding TaskDetail.Task.AssigneeDisplay}" FontWeight="SemiBold" FontSize="13.5" Margin="0,6,0,0" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="HẠN CHÓT &amp; NGƯỜI TẠO" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                <TextBlock Text="{Binding TaskDetail.Task.DeadlineDisplay}" FontWeight="SemiBold" FontSize="13" Margin="0,6,0,0" />
+                                <TextBlock Text="{Binding TaskDetail.CreatorName}" FontSize="11.5" Foreground="#64748B" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="Mô tả nhiệm vụ:" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBlock Text="{Binding TaskDetail.Description, TargetNullValue='Không có mô tả chi tiết.'}" TextWrapping="Wrap" Foreground="#334155" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Lifecycle Execution Actions Panel (Role & State Gated) -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Background="#F8FAFC" BorderBrush="#93C5FD" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="⚡ THAO TÁC CHUYỂN TRẠNG THÁI VÒNG ĐỜI NHIỆM VỤ (WORKFLOW ENGINE)" Style="{StaticResource SectionTitleTextStyle}" />
+
+                        <!-- 1. Assign Action (DRAFT / REJECTED) -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanAssignCurrentTask, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" Padding="10,4"
+                                            Command="{Binding RecommendAssignmentCommand}" Content="✨ AI Gợi ý Phân công" />
+                                    <TextBlock Text="1. Phân công nhiệm vụ (DRAFT → ASSIGNED)" FontWeight="Bold" Foreground="#17436F" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <UniformGrid Columns="3" Margin="0,0,0,8">
+                                    <StackPanel Margin="0,0,8,0">
+                                        <TextBlock Text="Loại đối tượng nhận" Style="{StaticResource FieldLabelTextStyle}" />
+                                        <ComboBox ItemsSource="{Binding TargetTypeOptions}" SelectedItem="{Binding AssignTargetType}" Style="{StaticResource ModernComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,8,0">
+                                        <TextBlock Text="Nhân sự nhận việc (USER)" Style="{StaticResource FieldLabelTextStyle}" />
+                                        <ComboBox ItemsSource="{Binding LookupUsers}" SelectedItem="{Binding SelectedAssignUser}" DisplayMemberPath="AssigneeOptionLabel" Style="{StaticResource ModernComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Hoặc Phòng ban nhận (DEPARTMENT)" Style="{StaticResource FieldLabelTextStyle}" />
+                                        <ComboBox ItemsSource="{Binding LookupDepartments}" SelectedItem="{Binding SelectedAssignDepartment}" DisplayMemberPath="Name" Style="{StaticResource ModernComboBoxStyle}" />
+                                    </StackPanel>
+                                </UniformGrid>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0"
+                                            Command="{Binding AssignTaskCommand}" Content="Phân công ngay →" />
+                                    <TextBox Text="{Binding AssignNote, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 2. Accept Action (ASSIGNED -> ACCEPTED) -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanAcceptCurrentTask, Converter={StaticResource BoolToVis}}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0"
+                                        Command="{Binding AcceptTaskCommand}" Content="✋ Nhận nhiệm vụ (ACCEPT)" />
+                                <TextBox Text="{Binding AcceptNote, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </DockPanel>
+                        </Border>
+
+                        <!-- 3. Start / Resume Action (ACCEPTED / OVERDUE -> IN_PROGRESS) -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanStartCurrentTask, Converter={StaticResource BoolToVis}}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding StartTaskCommand}" Content="▶️ Bắt đầu / Tiếp tục Thực hiện (IN_PROGRESS)" />
+                                <TextBlock Text="Nhiệm vụ đã được tiếp nhận. Bấm nút bên phải để chuyển sang trạng thái Đang thực hiện." VerticalAlignment="Center" FontWeight="SemiBold" />
+                            </DockPanel>
+                        </Border>
+
+                        <!-- 4. Submit Deliverable Result (IN_PROGRESS -> SUBMITTED) -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanSubmitCurrentTask, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Nộp báo cáo kết quả hoàn thành (IN_PROGRESS → SUBMITTED):" Style="{StaticResource FieldLabelTextStyle}" />
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0"
+                                            Command="{Binding SubmitResultCommand}" Content="📤 Nộp kết quả bàn giao" />
+                                    <TextBox Text="{Binding SubmitResultContent, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 5. Confirm / Request Rework (SUBMITTED -> COMPLETED or IN_PROGRESS) -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12"
+                                Visibility="{Binding CanConfirmCurrentTask, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Nghiệm thu &amp; Phê duyệt Kết quả (Dành cho Quản lý / Admin):" Style="{StaticResource FieldLabelTextStyle}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0" ItemsSource="{Binding ConfirmDecisionOptions}" SelectedItem="{Binding ConfirmDecision}" Style="{StaticResource ModernComboBoxStyle}" Margin="0,0,8,0" />
+                                    <TextBox Grid.Column="1" Text="{Binding ConfirmNote, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,8,0" />
+                                    <Button Grid.Column="2" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding ConfirmResultCommand}" Content="✅ Xác nhận Nghiệm thu" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Evidence & Collaboration Grid (Checklist, Results, Subtasks, Comments, Attachments) -->
+                <UniformGrid Columns="2">
+                    <!-- Left: Checklist & Submitted Results & Subtasks -->
+                    <Border Style="{StaticResource EnterpriseCardStyle}" Margin="0,0,8,0">
+                        <StackPanel>
+                            <TextBlock Text="📋 Danh mục kiểm tra (Checklist)" Style="{StaticResource SectionTitleTextStyle}" />
+                            <ItemsControl ItemsSource="{Binding ChecklistItems}" Margin="0,0,0,14">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F8FAFC" CornerRadius="6" Padding="8,5" Margin="0,0,0,4">
+                                            <TextBlock Text="{Binding Title}" FontWeight="Medium" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="📦 Kết quả đã nộp (Submitted Deliverables)" Style="{StaticResource SectionTitleTextStyle}" />
+                            <ItemsControl ItemsSource="{Binding SubmittedResults}" Margin="0,0,0,14">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,4">
+                                            <StackPanel>
+                                                <TextBlock FontWeight="Bold" Foreground="#065F46" FontSize="11.5">
+                                                    <Run Text="Lần nộp #" /><Run Text="{Binding RevisionNo, Mode=OneWay}" />
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="🌿 Nhiệm vụ con (Subtasks)" Style="{StaticResource SectionTitleTextStyle}" />
+                            <ItemsControl ItemsSource="{Binding Subtasks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel Margin="0,0,0,4">
+                                            <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" Padding="8,3" FontSize="11.5"
+                                                    Command="{Binding DataContext.InspectTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" Content="Mở" />
+                                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right: Comments & File Attachments -->
+                    <Border Style="{StaticResource EnterpriseCardStyle}" Margin="8,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="💬 Thảo luận &amp; Bình luận" Style="{StaticResource SectionTitleTextStyle}" />
+                            <DockPanel Margin="0,0,0,10">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="6,0,0,0"
+                                        Command="{Binding AddCommentCommand}" Content="Gửi" />
+                                <TextBox Text="{Binding NewCommentText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding Comments}" MaxHeight="160" Margin="0,0,0,16">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding AuthorName}" FontWeight="Bold" FontSize="12" Foreground="#17436F" />
+                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap" FontSize="12.5" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <DockPanel Margin="0,0,0,8">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" Padding="10,4"
+                                        Command="{Binding UploadAttachmentCommand}" Content="📎 Đính kèm tệp" />
+                                <TextBlock Text="📎 Tệp đính kèm (Attachments)" Style="{StaticResource SectionTitleTextStyle}" Margin="0" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding Attachments}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,4">
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" Padding="8,3" FontSize="11.5"
+                                                        Command="{Binding DataContext.DownloadAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" Content="⬇ Tải về" />
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="12.5" />
+                                                    <TextBlock Text="{Binding SizeDisplay}" FontSize="11" Foreground="#64748B" />
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

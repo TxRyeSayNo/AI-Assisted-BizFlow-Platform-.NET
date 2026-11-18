@@ -1,0 +1,25 @@
+[
+  {
+    "Name": "Full Stack (BizFlow.Api + BizFlow.Desktop WPF)",
+    "Projects": [
+      {
+        "Path": "backend\\BizFlow.Api\\BizFlow.Api.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      },
+      {
+        "Path": "backend\\BizFlow.Desktop\\BizFlow.Desktop.csproj",
+        "Action": "Start"
+      }
+    ]
+  },
+  {
+    "Name": "BizFlow.Desktop WPF Only (Auto-Supervises Backend)",
+    "Projects": [
+      {
+        "Path": "backend\\BizFlow.Desktop\\BizFlow.Desktop.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

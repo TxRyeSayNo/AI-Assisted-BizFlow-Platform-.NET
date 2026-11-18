@@ -1,0 +1,409 @@
+<UserControl x:Class="BizFlow.Desktop.Views.RequestsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="24,18">
+
+            <!-- ==========================================================
+                 MODE 1: SERVICE REQUESTS LIST
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveMode, Converter={StaticResource EqualToVis}, ConverterParameter=List}">
+                <DockPanel Margin="0,0,0,14">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Center"
+                            Visibility="{Binding CanCreateRequest, Converter={StaticResource BoolToVis}}"
+                            Command="{Binding OpenCreateRequestCommand}"
+                            Content="+ Tạo yêu cầu dịch vụ mới" />
+                    <StackPanel>
+                        <TextBlock Text="Quản lý Yêu cầu Dịch vụ (Service Requests)" Style="{StaticResource PageTitleTextStyle}" />
+                        <TextBlock Text="Gửi yêu cầu nội bộ, định tuyến về bộ phận chuyên trách, theo dõi giải quyết và xác nhận hoàn tất."
+                                   Foreground="#64748B" FontSize="13" Margin="0,2,0,0" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Filter Bar -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="14" Margin="0,0,0,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                            <TextBlock Text="Từ khóa tiêu đề yêu cầu" Style="{StaticResource FieldLabelTextStyle}" />
+                            <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                            <TextBlock Text="Trạng thái" Style="{StaticResource FieldLabelTextStyle}" />
+                            <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Margin="0,0,10,0">
+                            <TextBlock Text="Mức độ ưu tiên" Style="{StaticResource FieldLabelTextStyle}" />
+                            <ComboBox ItemsSource="{Binding PriorityOptions}" SelectedItem="{Binding SelectedPriority}" Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="3" Margin="0,0,10,0">
+                            <TextBlock Text="Dịch vụ nội bộ" Style="{StaticResource FieldLabelTextStyle}" />
+                            <ComboBox ItemsSource="{Binding AvailableServices}" SelectedItem="{Binding FilterService}" DisplayMemberPath="Name" Style="{StaticResource ModernComboBoxStyle}" />
+                        </StackPanel>
+
+                        <Button Grid.Column="4" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Bottom" Margin="0,0,6,0"
+                                Command="{Binding LoadCommand}" Content="Lọc" />
+                        <Button Grid.Column="5" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Bottom"
+                                Command="{Binding ResetFiltersCommand}" Content="Đặt lại" />
+                    </Grid>
+                </Border>
+
+                <!-- Requests DataGrid -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="0">
+                    <StackPanel>
+                        <DataGrid ItemsSource="{Binding Requests}" SelectedItem="{Binding SelectedRequestRow}"
+                                  Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="380">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Tiêu đề yêu cầu" Binding="{Binding Title}" Width="2.3*" FontWeight="SemiBold" />
+                                <DataGridTextColumn Header="Dịch vụ" Binding="{Binding ServiceName}" Width="1.3*" />
+                                <DataGridTextColumn Header="Phân loại" Binding="{Binding CategoryName}" Width="1.1*" />
+                                <DataGridTemplateColumn Header="Trạng thái" Width="135">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{Binding Status, Converter={StaticResource StatusToBg}}" CornerRadius="6" Padding="8,3" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0">
+                                                <TextBlock Text="{Binding Status}" Foreground="{Binding Status, Converter={StaticResource StatusToFg}}" FontSize="11.5" FontWeight="Bold" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Ưu tiên" Binding="{Binding Priority}" Width="90" FontWeight="Bold" />
+                                <DataGridTextColumn Header="Người yêu cầu" Binding="{Binding RequesterName}" Width="1.1*" />
+                                <DataGridTextColumn Header="Ngày tạo" Binding="{Binding CreatedDisplay}" Width="130" />
+                                <DataGridTemplateColumn Header="Thao tác" Width="115">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource SecondaryButtonStyle}" Padding="10,4" FontSize="12"
+                                                    Command="{Binding DataContext.InspectRequestCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="Chi tiết →" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <DockPanel Margin="14,10">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Style="{StaticResource SecondaryButtonStyle}" Padding="12,5" Margin="0,0,6,0"
+                                        Command="{Binding PreviousPageCommand}" Content="← Trang trước" />
+                                <Button Style="{StaticResource SecondaryButtonStyle}" Padding="12,5"
+                                        Command="{Binding NextPageCommand}" Content="Trang sau →" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding PageSummary}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#475569" />
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ==========================================================
+                 MODE 2: CREATE SERVICE REQUEST
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveMode, Converter={StaticResource EqualToVis}, ConverterParameter=Create}">
+                <DockPanel Margin="0,0,0,14">
+                    <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding BackToListCommand}" Content="← Quay lại danh sách" Margin="0,0,14,0" />
+                    <TextBlock Text="Khởi tạo Yêu cầu Dịch vụ Nội bộ" Style="{StaticResource PageTitleTextStyle}" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <Border Style="{StaticResource EnterpriseCardStyle}">
+                    <StackPanel>
+                        <UniformGrid Columns="2" Margin="0,0,0,12">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="1. Chọn Dịch vụ nội bộ *" Style="{StaticResource FieldLabelTextStyle}" />
+                                <ComboBox ItemsSource="{Binding AvailableServices}" SelectedItem="{Binding SelectedCreateService}" DisplayMemberPath="Name" Style="{StaticResource ModernComboBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="8,0,0,0">
+                                <TextBlock Text="2. Phân loại yêu cầu (Category) *" Style="{StaticResource FieldLabelTextStyle}" />
+                                <ComboBox ItemsSource="{Binding AvailableCategories}" SelectedItem="{Binding SelectedCreateCategory}" DisplayMemberPath="Name" Style="{StaticResource ModernComboBoxStyle}" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="3. Tiêu đề yêu cầu *" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBox Text="{Binding CreateTitle, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,12" />
+
+                        <TextBlock Text="4. Mô tả chi tiết vấn đề / nhu cầu hỗ trợ *" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBox Text="{Binding CreateDescription, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}"
+                                 AcceptsReturn="True" Height="100" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
+
+                        <UniformGrid Columns="2" Margin="0,0,0,16">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="5. Mức độ ưu tiên *" Style="{StaticResource FieldLabelTextStyle}" />
+                                <ComboBox ItemsSource="{Binding CreatePriorityOptions}" SelectedItem="{Binding CreatePriority}" Style="{StaticResource ModernComboBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="8,18,0,0" VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding SubmitImmediately}" Content="Gửi duyệt ngay sau khi tạo (SUBMITTED)" FontWeight="SemiBold" FontSize="13" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <WrapPanel>
+                            <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SubmitCreateRequestCommand}" Content="📨 Lưu &amp; Gửi Yêu cầu Dịch vụ" Margin="0,0,10,0" />
+                            <Button Style="{StaticResource SecondaryButtonStyle}" Command="{Binding BackToListCommand}" Content="Hủy bỏ" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ==========================================================
+                 MODE 3: REQUEST DETAIL & MULTI-STAGE APPROVAL WORKFLOW
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveMode, Converter={StaticResource EqualToVis}, ConverterParameter=Detail}">
+                <DockPanel Margin="0,0,0,14">
+                    <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding BackToListCommand}" Content="← Danh sách yêu cầu" Margin="0,0,14,0" />
+                    <WrapPanel DockPanel.Dock="Right">
+                        <Button Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0"
+                                Visibility="{Binding CanSubmitDraft, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding SubmitDraftRequestCommand}" Content="📨 Gửi yêu cầu (SUBMIT)" />
+                        <Button Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0"
+                                Visibility="{Binding CanStartCurrent, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding StartProcessingCommand}" Content="▶️ Bắt đầu xử lý (IN_PROGRESS)" />
+                        <Button Style="{StaticResource DangerButtonStyle}" Margin="0,0,8,0"
+                                Visibility="{Binding CanCancelCurrent, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding CancelRequestCommand}" Content="✕ Hủy yêu cầu" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding RequestDetail.Title}" Style="{StaticResource PageTitleTextStyle}" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <!-- Request Metadata Card -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Margin="0,0,0,14">
+                    <StackPanel>
+                        <UniformGrid Columns="4" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="TRẠNG THÁI YÊU CẦU" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                <Border Background="{Binding RequestDetail.Status, Converter={StaticResource StatusToBg}}" CornerRadius="6" Padding="10,4" HorizontalAlignment="Left" Margin="0,4,0,0">
+                                    <TextBlock Text="{Binding RequestDetail.Status}" Foreground="{Binding RequestDetail.Status, Converter={StaticResource StatusToFg}}" FontWeight="ExtraBold" />
+                                </Border>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="DỊCH VỤ &amp; PHÂN LOẠI" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                <TextBlock Text="{Binding RequestDetail.ServiceName}" FontWeight="Bold" Foreground="#17436F" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RequestDetail.CategoryName}" FontSize="12" Foreground="#64748B" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="NGƯỜI GỬI YÊU CẦU" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                <TextBlock Text="{Binding RequestDetail.RequesterName}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RequestDetail.Priority}" FontSize="12" FontWeight="Bold" Foreground="#2563EB" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="ĐƠN VỊ TIẾP NHẬN ĐIỀU PHỐI" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                                <TextBlock Text="{Binding RequestDetail.CurrentRoutingDepartmentName, TargetNullValue='Chưa điều phối'}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RequestDetail.CurrentRoutingUserName}" FontSize="12" Foreground="#64748B" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="Nội dung yêu cầu:" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBlock Text="{Binding RequestDetail.Description, TargetNullValue='Không có mô tả chi tiết.'}" TextWrapping="Wrap" Foreground="#334155" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Request Lifecycle Actions Panel -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Background="#F8FAFC" BorderBrush="#93C5FD" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="⚡ ĐIỀU PHỐI, XỬ LÝ &amp; PHÊ DUYỆT YÊU CẦU DỊCH VỤ" Style="{StaticResource SectionTitleTextStyle}" />
+
+                        <!-- Route Action -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanRouteCurrent, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,6">
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" Padding="10,4"
+                                            Command="{Binding RecommendRoutingCommand}" Content="✨ AI Gợi ý Điều phối" />
+                                    <TextBlock Text="1. Điều phối yêu cầu về Phòng ban / Nhân sự (ROUTE):" FontWeight="Bold" Foreground="#17436F" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.2*" />
+                                        <ColumnDefinition Width="1.2*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0" ItemsSource="{Binding LookupDepartments}" SelectedItem="{Binding RouteDepartment}" DisplayMemberPath="Name" Style="{StaticResource ModernComboBoxStyle}" Margin="0,0,6,0" />
+                                    <DockPanel Grid.Column="1" Margin="0,0,6,0">
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" Padding="8,4" Margin="4,0,0,0"
+                                                Command="{Binding ClearRouteUserCommand}" ToolTip="Bỏ chọn nhân sự cụ thể" Content="✕" />
+                                        <ComboBox ItemsSource="{Binding LookupUsers}" SelectedItem="{Binding RouteUser}" DisplayMemberPath="AssigneeOptionLabel" Style="{StaticResource ModernComboBoxStyle}" />
+                                    </DockPanel>
+                                    <TextBox Grid.Column="2" Text="{Binding RouteReason, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,6,0" />
+                                    <Button Grid.Column="3" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding RouteRequestCommand}" Content="Điều phối →" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Receive Action -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanReceiveCurrent, Converter={StaticResource BoolToVis}}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0"
+                                        Command="{Binding ReceiveRequestCommand}" Content="📥 Tiếp nhận xử lý (RECEIVE)" />
+                                <TextBox Text="{Binding ReceiveNote, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Resolve Action -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanResolveCurrent, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Hoàn tất giải quyết yêu cầu (IN_PROGRESS → RESOLVED):" Style="{StaticResource FieldLabelTextStyle}" />
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0"
+                                            Command="{Binding ResolveRequestCommand}" Content="✅ Hoàn tất Giải quyết" />
+                                    <TextBox Text="{Binding ResolveContent, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Confirm / Rework Resolution -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanConfirmCurrent, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Xác nhận Kết quả Giải quyết &amp; Đóng yêu cầu (RESOLVED → CLOSED):" Style="{StaticResource FieldLabelTextStyle}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0" ItemsSource="{Binding ConfirmDecisionOptions}" SelectedItem="{Binding ConfirmDecision}" Style="{StaticResource ModernComboBoxStyle}" Margin="0,0,8,0" />
+                                    <TextBox Grid.Column="1" Text="{Binding ConfirmNote, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,8,0" />
+                                    <Button Grid.Column="2" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding ConfirmRequestCommand}" Content="Xác nhận" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Reject Action -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanRejectCurrent, Converter={StaticResource BoolToVis}}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource DangerButtonStyle}" Margin="8,0,0,0"
+                                        Command="{Binding RejectRequestCommand}" Content="✕ Từ chối yêu cầu" />
+                                <TextBox Text="{Binding RejectReason, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Revise Rejected Request -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanReviseCurrent, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Hiệu chỉnh &amp; gửi lại yêu cầu bị từ chối:" FontWeight="SemiBold" Foreground="#17436F" Margin="0,0,0,6" />
+                                <TextBox Text="{Binding ReviseTitle, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,6" />
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0"
+                                            Command="{Binding ReviseRequestCommand}" Content="🔄 Gửi bản hiệu chỉnh" />
+                                    <TextBox Text="{Binding ReviseDescription, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Archive Closed/Cancelled Request -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                                Visibility="{Binding CanArchiveCurrent, Converter={StaticResource BoolToVis}}">
+                            <Button Style="{StaticResource SecondaryButtonStyle}"
+                                    Command="{Binding ArchiveRequestCommand}" Content="📦 Lưu trữ hồ sơ yêu cầu" />
+                        </Border>
+
+                        <!-- Create Linked Task -->
+                        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12"
+                                Visibility="{Binding CanCreateLinkedTask, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Tạo nhiệm vụ thực thi liên kết trực tiếp với yêu cầu này:" Style="{StaticResource FieldLabelTextStyle}" />
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"
+                                            Command="{Binding CreateLinkedTaskCommand}" Content="+ Tạo nhiệm vụ liên kết" />
+                                    <TextBox Text="{Binding LinkedTaskTitle, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Resolutions, Linked Tasks, Comments & Attachments -->
+                <UniformGrid Columns="2">
+                    <Border Style="{StaticResource EnterpriseCardStyle}" Margin="0,0,8,0">
+                        <StackPanel>
+                            <TextBlock Text="🛠️ Lịch sử Giải quyết (Resolutions)" Style="{StaticResource SectionTitleTextStyle}" />
+                            <ItemsControl ItemsSource="{Binding Resolutions}" Margin="0,0,0,14">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,4">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding ResolverName}" FontWeight="Bold" FontSize="12" Foreground="#065F46" />
+                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="📋 Nhiệm vụ Thực thi Liên kết" Style="{StaticResource SectionTitleTextStyle}" />
+                            <ItemsControl ItemsSource="{Binding LinkedTasks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F8FAFC" CornerRadius="6" Padding="8,5" Margin="0,0,0,4">
+                                            <DockPanel>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" FontWeight="Bold" Foreground="#145DA0" />
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource EnterpriseCardStyle}" Margin="8,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="💬 Bình luận &amp; Trao đổi" Style="{StaticResource SectionTitleTextStyle}" />
+                            <DockPanel Margin="0,0,0,10">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="6,0,0,0"
+                                        Command="{Binding AddCommentCommand}" Content="Gửi" />
+                                <TextBox Text="{Binding NewCommentText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding Comments}" MaxHeight="160" Margin="0,0,0,14">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,6">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding AuthorName}" FontWeight="Bold" FontSize="12" Foreground="#17436F" />
+                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap" FontSize="12.5" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <DockPanel Margin="0,0,0,8">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" Padding="10,4"
+                                        Command="{Binding UploadAttachmentCommand}" Content="📎 Đính kèm tệp" />
+                                <TextBlock Text="📎 Tệp đính kèm" Style="{StaticResource SectionTitleTextStyle}" Margin="0" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding Attachments}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,4">
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" Padding="8,3" FontSize="11.5"
+                                                        Command="{Binding DataContext.DownloadAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" Content="⬇ Tải về" />
+                                                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

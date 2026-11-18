@@ -1,0 +1,113 @@
+using BizFlow.Application.Common;
+using BizFlow.Application.Security;
+using BizFlow.Domain.Security;
+
+namespace BizFlow.Application.Organization;
+
+public sealed record UserDirectoryFilter(
+    int Page = 1,
+    int PageSize = 25,
+    string? Search = null,
+    string? Status = null,
+    Guid? DepartmentId = null,
+    IReadOnlySet<Guid>? AllowedDepartmentIds = null);
+
+public sealed record UserDirectoryRow(
+    Guid UserId,
+    string EmployeeCode,
+    string FullName,
+    string Email,
+    Guid? DepartmentId,
+    string? DepartmentName,
+    string Status,
+    bool IsManager = false,
+    string? RoleName = null);
+
+public sealed record UserDirectoryPage(IReadOnlyList<UserDirectoryRow> Items, int Page, int PageSize, long Total);
+
+public interface IUserDirectoryReader
+{
+    Task<UserDirectoryPage> ListAsync(Guid tenantId, UserDirectoryFilter filter, CancellationToken cancellationToken);
+}
+
+// Canonical API-ORG-01 and SSS §5 Organization read capability with strict department role scoping.
+public sealed class UserDirectoryQuery(
+    ITenantContext context,
+    IResourceAuthorizer authorizer,
+    IAccessSnapshotProvider snapshots,
+    IUserDirectoryReader reader)
+{
+    public const string ReadPermission = "users.read";
+
+    public async Task<UserDirectoryPage> ListAsync(UserDirectoryFilter filter, CancellationToken cancellationToken)
+    {
+        await authorizer.AuthorizeAsync(ReadPermission, new(context.TenantId), cancellationToken: cancellationToken);
+        var tenantId = context.TenantId ?? throw new ApplicationFault(FaultKind.Forbidden, "ACCESS.DENIED", "The people directory requires a tenant workspace.");
+        var actorId = context.UserId ?? throw new ApplicationFault(FaultKind.Forbidden, "ACCESS.DENIED", "Authentication required.");
+
+        var search = string.IsNullOrWhiteSpace(filter.Search) ? null : filter.Search.Trim();
+        var status = string.IsNullOrWhiteSpace(filter.Status) ? null : filter.Status.Trim();
+        if (filter.Page < 1 || filter.PageSize is < 1 or > 100 || (long)(filter.Page - 1) * filter.PageSize > int.MaxValue ||
+            search?.Length > 200 || filter.DepartmentId == Guid.Empty || status is not (null or "ACTIVE" or "INACTIVE" or "LOCKED"))
+            throw new ApplicationFault(FaultKind.Validation, "VALIDATION.FAILED", "Use a valid search, user status, department and page size from 1 to 100.");
+
+        var access = await snapshots.ResolveAsync(actorId, tenantId, cancellationToken);
+        if (access is null || !access.IsUserActive || !access.IsTenantActive)
+            throw new ApplicationFault(FaultKind.Forbidden, "ACCESS.DENIED", "Access denied.");
+
+        var isCompanyAdmin = access.Grants.Any(g => g.Code == "roles.configure" && g.Scope == PermissionScope.Tenant);
+        var isManager = access.Grants.Any(g => g.Code == "tasks.read.managed") || access.ManagedDepartmentIds.Count > 0;
+
+        IReadOnlySet<Guid>? allowedDepts = null;
+        Guid? targetDepartmentId = filter.DepartmentId;
+
+        if (isCompanyAdmin)
+        {
+            // Company Administrator has full visibility across all departments in the tenant.
+            // Can optionally filter by any specific department.
+        }
+        else if (isManager)
+        {
+            // Managers with assigned/managed departments view employees in their department scope;
+            // unassigned managers retain tenant directory read granted by users.read.
+            var managerDepts = access.ManagedDepartmentIds.Concat(access.DepartmentIds).ToHashSet();
+            if (managerDepts.Count > 0)
+            {
+                if (targetDepartmentId.HasValue)
+                {
+                    if (!managerDepts.Contains(targetDepartmentId.Value))
+                    {
+                        throw new ApplicationFault(FaultKind.Forbidden, "ACCESS.DENIED", "Managers can only view employee directories within their authorized department scope.");
+                    }
+                }
+                else
+                {
+                    allowedDepts = managerDepts;
+                }
+            }
+        }
+        else
+        {
+            // Employee role: if assigned to a department, scope to their department;
+            // if unassigned, retain tenant directory read granted by users.read.
+            var employeeDept = access.DepartmentIds.FirstOrDefault();
+            if (employeeDept != Guid.Empty)
+            {
+                if (targetDepartmentId.HasValue && targetDepartmentId.Value != employeeDept)
+                {
+                    throw new ApplicationFault(FaultKind.Forbidden, "ACCESS.DENIED", "Employees can only view the employee directory of their own department.");
+                }
+
+                targetDepartmentId = employeeDept;
+            }
+        }
+
+        return await reader.ListAsync(tenantId, filter with
+        {
+            Search = search,
+            Status = status,
+            DepartmentId = targetDepartmentId,
+            AllowedDepartmentIds = allowedDepts
+        }, cancellationToken);
+    }
+}

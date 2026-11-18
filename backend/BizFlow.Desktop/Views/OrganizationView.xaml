@@ -1,0 +1,339 @@
+<UserControl x:Class="BizFlow.Desktop.Views.OrganizationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="24,18">
+            <DockPanel Margin="0,0,0,14">
+                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center"
+                        Command="{Binding LoadAllCommand}" Content="🔄 Đồng bộ toàn bộ cấu hình" />
+                <StackPanel>
+                    <TextBlock Text="Quản trị Tổ chức, Nhân sự, Phân quyền RBAC &amp; Thiết lập Doanh nghiệp" Style="{StaticResource PageTitleTextStyle}" />
+                    <TextBlock Text="{Binding ReadinessSummary}" Foreground="#059669" FontWeight="Bold" FontSize="13" Margin="0,2,0,0" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- Sub-navigation Tabs -->
+            <Border Style="{StaticResource EnterpriseCardStyle}" Padding="10" Margin="0,0,0,14">
+                <WrapPanel>
+                    <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                            Command="{Binding SwitchTabCommand}" CommandParameter="Users"
+                            Content="👥 Danh bạ Nhân sự &amp; Batch Import" />
+                    <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                            Command="{Binding SwitchTabCommand}" CommandParameter="Departments"
+                            Content="🏢 Phòng ban &amp; Bộ phận" />
+                    <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                            Command="{Binding SwitchTabCommand}" CommandParameter="Roles"
+                            Content="🔐 Vai trò &amp; Quyền hạn (RBAC)" />
+                    <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                            Command="{Binding SwitchTabCommand}" CommandParameter="Services"
+                            Content="⚙️ Danh mục Dịch vụ Nội bộ" />
+                    <Button Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding SwitchTabCommand}" CommandParameter="SlaProfiles"
+                            Content="⏱️ Hồ sơ Cam kết SLA" />
+                </WrapPanel>
+            </Border>
+
+            <!-- ==========================================================
+                 TAB 1: USERS DIRECTORY, PROMOTION/DEMOTION & BATCH IMPORT
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveTab, Converter={StaticResource EqualToVis}, ConverterParameter=Users}">
+                <!-- Create Single Employee Bar -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Background="#F8FAFC" Padding="14" Margin="0,0,0,12"
+                        Visibility="{Binding CanManageOrganization, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="➕ TẠO TÀI KHOẢN NHÂN SỰ MỚI" Style="{StaticResource SectionTitleTextStyle}" />
+                        <UniformGrid Columns="6">
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Mã NV *" Style="{StaticResource FieldLabelTextStyle}" />
+                                <TextBox Text="{Binding NewUserCode, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Họ và tên *" Style="{StaticResource FieldLabelTextStyle}" />
+                                <TextBox Text="{Binding NewUserFullName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Email công ty *" Style="{StaticResource FieldLabelTextStyle}" />
+                                <TextBox Text="{Binding NewUserEmail, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Phòng ban" Style="{StaticResource FieldLabelTextStyle}" />
+                                <ComboBox ItemsSource="{Binding Departments}" SelectedItem="{Binding NewUserDepartment}" DisplayMemberPath="Name" Style="{StaticResource ModernComboBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Vai trò" Style="{StaticResource FieldLabelTextStyle}" />
+                                <ComboBox ItemsSource="{Binding RoleCodeOptions}" SelectedItem="{Binding NewUserRole}" Style="{StaticResource ModernComboBoxStyle}" />
+                            </StackPanel>
+                            <Button Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Bottom"
+                                    Command="{Binding CreateUserCommand}" Content="+ Tạo nhân sự" />
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Users Table -->
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="0" Margin="0,0,0,14">
+                    <DataGrid ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}"
+                              Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="270">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Mã NV" Binding="{Binding EmployeeCode}" Width="110" FontWeight="Bold" />
+                            <DataGridTextColumn Header="Họ và tên" Binding="{Binding FullName}" Width="1.5*" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="1.6*" />
+                            <DataGridTextColumn Header="Phòng ban" Binding="{Binding DepartmentDisplay}" Width="1.3*" />
+                            <DataGridTextColumn Header="Vai trò / Chức danh" Binding="{Binding RoleDisplay}" Width="170" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="100" FontWeight="Bold" />
+                            <DataGridTemplateColumn Header="Quản trị Chức danh &amp; Quyền" Width="340">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource SecondaryButtonStyle}" Padding="8,4" FontSize="11" Margin="0,0,4,0"
+                                                    Command="{Binding DataContext.PromoteToManagerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" Content="🎖️ Thăng Quản lý" />
+                                            <Button Style="{StaticResource SecondaryButtonStyle}" Padding="8,4" FontSize="11" Margin="0,0,4,0"
+                                                    Command="{Binding DataContext.InspectDemoteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" Content="🔻 Hạ cấp" />
+                                            <Button Style="{StaticResource SecondaryButtonStyle}" Padding="8,4" FontSize="11" Margin="0,0,4,0"
+                                                    Command="{Binding DataContext.ToggleUserStatusCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" Content="Khóa/Mở" />
+                                            <Button Style="{StaticResource DangerButtonStyle}" Padding="8,4" FontSize="11"
+                                                    Command="{Binding DataContext.TransferAdminCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" Content="👑 Giao Admin" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+
+                <!-- Responsibility Check & Demotion Panel + Batch Import Panel -->
+                <UniformGrid Columns="2" Visibility="{Binding CanManageOrganization, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource EnterpriseCardStyle}" Margin="0,0,8,0">
+                        <StackPanel>
+                            <TextBlock Text="🔻 KIỂM TRA TRÁCH NHIỆM &amp; BÀN GIAO KHI HẠ CẤP QUẢN LÝ" Style="{StaticResource SectionTitleTextStyle}" />
+                            <StackPanel Visibility="{Binding DemoteResponsibilities, Converter={StaticResource NullToVis}}">
+                                <TextBlock FontWeight="Bold" Foreground="#071B33" Margin="0,0,0,6">
+                                    <Run Text="Nhân sự đang kiểm tra: " /><Run Text="{Binding DemoteResponsibilities.FullName, Mode=OneWay}" />
+                                    <Run Text=" (" /><Run Text="{Binding DemoteResponsibilities.EmployeeCode, Mode=OneWay}" /><Run Text=")" />
+                                </TextBlock>
+                                <TextBlock FontSize="12.5" Foreground="#475569" Margin="0,0,0,8">
+                                    <Run Text="• Công việc chính đang phụ trách: " /><Run Text="{Binding DemoteResponsibilities.ActiveMainTasksCount, Mode=OneWay}" FontWeight="Bold" />
+                                    <Run Text=" · Nhiệm vụ con: " /><Run Text="{Binding DemoteResponsibilities.ActiveChildTasksCount, Mode=OneWay}" FontWeight="Bold" />
+                                    <Run Text=" · Phê duyệt chờ xử lý: " /><Run Text="{Binding DemoteResponsibilities.PendingApprovalsCount, Mode=OneWay}" FontWeight="Bold" />
+                                </TextBlock>
+                                <TextBlock Text="Chọn Quản lý thay thế nhận bàn giao công việc:" Style="{StaticResource FieldLabelTextStyle}" />
+                                <ComboBox ItemsSource="{Binding DemoteResponsibilities.EligibleReplacementManagers}" SelectedItem="{Binding SelectedReplacementManager}"
+                                          DisplayMemberPath="DisplayName" Style="{StaticResource ModernComboBoxStyle}" Margin="0,0,0,10" />
+                                <Button Style="{StaticResource DangerButtonStyle}" Command="{Binding ConfirmDemoteCommand}" Content="Xác nhận Bàn giao &amp; Hạ cấp xuống Nhân viên" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource EnterpriseCardStyle}" Margin="8,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="📁 NHẬP HÀNG LOẠT NHÂN SỰ (CSV / EXCEL DRY-RUN &amp; COMMIT)" Style="{StaticResource SectionTitleTextStyle}" />
+                            <TextBlock Text="Định dạng: Mã NV, Họ và Tên, Email, Mã Phòng Ban, Vai Trò" FontSize="11.5" Foreground="#64748B" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding BatchCsvText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}"
+                                     AcceptsReturn="True" Height="68" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <WrapPanel Margin="0,0,0,8">
+                                <Button Style="{StaticResource SecondaryButtonStyle}" Command="{Binding DryRunBatchImportCommand}" Content="🔍 Kiểm tra Hợp lệ (Dry Run)" Margin="0,0,8,0" />
+                                <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding CommitBatchImportCommand}" Content="🚀 Xác nhận Nhập vào Hệ thống" />
+                            </WrapPanel>
+                            <ItemsControl ItemsSource="{Binding BatchValidationItems}" MaxHeight="110">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock FontSize="11.5" Margin="0,0,0,2">
+                                            <Run Text="[" /><Run Text="{Binding StatusDisplay, Mode=OneWay}" FontWeight="Bold" /><Run Text="] " />
+                                            <Run Text="{Binding EmployeeCode, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" · " />
+                                            <Run Text="{Binding Email, Mode=OneWay}" /><Run Text=" — " />
+                                            <Run Text="{Binding ErrorSummary, Mode=OneWay}" Foreground="#475569" />
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </StackPanel>
+
+            <!-- ==========================================================
+                 TAB 2: DEPARTMENTS DIRECTORY & MANAGEMENT
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveTab, Converter={StaticResource EqualToVis}, ConverterParameter=Departments}">
+                <Border Style="{StaticResource EnterpriseCardStyle}" Background="#F8FAFC" Padding="14" Margin="0,0,0,12"
+                        Visibility="{Binding CanManageOrganization, Converter={StaticResource BoolToVis}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                            <TextBlock Text="Mã phòng ban (vd: HR, FIN) *" Style="{StaticResource FieldLabelTextStyle}" />
+                            <TextBox Text="{Binding NewDeptCode, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                            <TextBlock Text="Tên phòng ban / bộ phận *" Style="{StaticResource FieldLabelTextStyle}" />
+                            <TextBox Text="{Binding NewDeptName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Bottom"
+                                Command="{Binding CreateDepartmentCommand}" Content="+ Thêm Phòng ban" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="0">
+                    <DataGrid ItemsSource="{Binding Departments}" Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="320">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Mã Phòng ban" Binding="{Binding Code}" Width="160" FontWeight="Bold" />
+                            <DataGridTextColumn Header="Tên Phòng ban / Bộ phận" Binding="{Binding Name}" Width="2.5*" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="140" FontWeight="Bold" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+            </StackPanel>
+
+            <!-- ==========================================================
+                 TAB 3: ROLES & GRANULAR PERMISSIONS (RBAC + ETAG)
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveTab, Converter={StaticResource EqualToVis}, ConverterParameter=Roles}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource EnterpriseCardStyle}" Margin="0,0,12,0">
+                        <StackPanel>
+                            <TextBlock Text="🔐 DANH SÁCH VAI TRÒ" Style="{StaticResource SectionTitleTextStyle}" />
+                            <DockPanel Margin="0,0,0,10">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="6,0,0,0"
+                                        Command="{Binding CreateRoleCommand}" Content="+ Tạo" />
+                                <TextBox Text="{Binding NewRoleName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </DockPanel>
+                            <ListBox ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}" Height="320">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="4">
+                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="#071B33" />
+                                            <TextBlock Text="{Binding TypeBadge}" FontSize="11" Foreground="#64748B" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource EnterpriseCardStyle}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,10">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding SaveRolePermissionsCommand}" Content="💾 Lưu cấu hình Quyền hạn (If-Match ETag)" />
+                                <StackPanel>
+                                    <TextBlock Text="Ma trận Quyền hạn cho Vai trò đang chọn" Style="{StaticResource SectionTitleTextStyle}" Margin="0" />
+                                    <TextBlock Text="{Binding SelectedRole.Name}" FontWeight="Bold" Foreground="#2563EB" />
+                                </StackPanel>
+                            </DockPanel>
+                            <ScrollViewer Height="340" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding PermissionItems}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="2" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" Margin="4,5">
+                                                <TextBlock>
+                                                    <Run Text="{Binding Permission.Code, Mode=OneWay}" FontWeight="SemiBold" />
+                                                    <Run Text=" [" /><Run Text="{Binding Permission.Scope, Mode=OneWay}" Foreground="#64748B" /><Run Text="]" />
+                                                </TextBlock>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
+
+            <!-- ==========================================================
+                 TAB 4: INTERNAL SERVICES & CATEGORIES CATALOG
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveTab, Converter={StaticResource EqualToVis}, ConverterParameter=Services}">
+                <Border Style="{StaticResource EnterpriseCardStyle}" Background="#F8FAFC" Padding="14" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="⚙️ KHỞI TẠO DỊCH VỤ NỘI BỘ &amp; PHÂN LOẠI YÊU CẦU" Style="{StaticResource SectionTitleTextStyle}" />
+                        <UniformGrid Columns="5">
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Mã dịch vụ *" Style="{StaticResource FieldLabelTextStyle}" />
+                                <TextBox Text="{Binding NewServiceCode, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Tên dịch vụ *" Style="{StaticResource FieldLabelTextStyle}" />
+                                <TextBox Text="{Binding NewServiceName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Mã phân loại (Category)" Style="{StaticResource FieldLabelTextStyle}" />
+                                <TextBox Text="{Binding NewCategoryCode, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Tên phân loại" Style="{StaticResource FieldLabelTextStyle}" />
+                                <TextBox Text="{Binding NewCategoryName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding CreateServiceCommand}" Content="+ Tạo Dịch vụ" Margin="0,0,6,0" />
+                                <Button Style="{StaticResource SecondaryButtonStyle}" Command="{Binding AddServiceCategoryCommand}" Content="+ Thêm Category" />
+                            </StackPanel>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="0">
+                    <DataGrid ItemsSource="{Binding Services}" SelectedItem="{Binding SelectedService}"
+                              Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="320">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Mã Dịch vụ" Binding="{Binding Code}" Width="140" FontWeight="Bold" />
+                            <DataGridTextColumn Header="Tên Dịch vụ Nội bộ" Binding="{Binding Name}" Width="1.6*" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="110" FontWeight="Bold" />
+                            <DataGridTextColumn Header="Các Phân loại (Categories)" Binding="{Binding CategoriesSummary}" Width="2.2*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+            </StackPanel>
+
+            <!-- ==========================================================
+                 TAB 5: SLA PROFILES & VERSION HISTORY
+                 ========================================================== -->
+            <StackPanel Visibility="{Binding ActiveTab, Converter={StaticResource EqualToVis}, ConverterParameter=SlaProfiles}">
+                <Border Style="{StaticResource EnterpriseCardStyle}" Background="#F8FAFC" Padding="14" Margin="0,0,0,12">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0"
+                                Command="{Binding CreateSlaProfileCommand}" Content="+ Tạo Hồ sơ SLA Bản nháp" />
+                        <TextBox Text="{Binding NewSlaProfileName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" />
+                    </DockPanel>
+                </Border>
+
+                <UniformGrid Columns="2">
+                    <Border Style="{StaticResource EnterpriseCardStyle}" Padding="0" Margin="0,0,6,0">
+                        <DataGrid ItemsSource="{Binding SlaProfiles}" SelectedItem="{Binding SelectedSlaProfile}"
+                                  Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="280">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Tên Hồ sơ SLA" Binding="{Binding Name}" Width="*" FontWeight="SemiBold" />
+                                <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="120" FontWeight="Bold" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+                    <Border Style="{StaticResource EnterpriseCardStyle}" Padding="0" Margin="6,0,0,0">
+                        <DataGrid ItemsSource="{Binding SlaVersions}" Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="280">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Phiên bản" Binding="{Binding VersionNo}" Width="90" FontWeight="Bold" />
+                                <DataGridTextColumn Header="Mục tiêu (Target)" Binding="{Binding TargetDisplay}" Width="*" />
+                                <DataGridTextColumn Header="Cảnh báo (Warning)" Binding="{Binding WarningDisplay}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+                </UniformGrid>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

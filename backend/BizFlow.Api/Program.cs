@@ -1,0 +1,258 @@
+using BizFlow.Api.Errors;
+using BizFlow.Api;
+using BizFlow.Api.Security;
+using BizFlow.Application.Authentication;
+using BizFlow.Application.Security;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
+using Microsoft.AspNetCore.Mvc;
+using Serilog;
+using Serilog.Formatting.Compact;
+
+LoadDotEnvIfExists();
+
+var builder = WebApplication.CreateBuilder(args);
+var prnKey = Environment.GetEnvironmentVariable("PRN_KEY") ?? builder.Configuration["PRN_KEY"];
+if (!string.IsNullOrWhiteSpace(prnKey) && string.IsNullOrWhiteSpace(builder.Configuration["OpenAI:ApiKey"]))
+{
+    builder.Configuration["OpenAI:ApiKey"] = prnKey;
+}
+builder.Logging.ClearProviders();
+builder.Services.AddSerilog(configuration => configuration
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(new RenderedCompactJsonFormatter()));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantContext, ClaimsTenantContext>();
+builder.Services.AddBizFlowAuthentication(builder.Configuration);
+builder.Services.AddBizFlowPasswordReset(builder.Configuration);
+builder.Services.AddSingleton<BizFlow.Application.Common.IReadinessProbe>(_ => new BizFlow.Infrastructure.Persistence.DatabaseReadinessProbe(
+    builder.Configuration.GetConnectionString("BizFlow") ?? throw new InvalidOperationException("ConnectionStrings:BizFlow is required.")));
+builder.Services.AddScoped<BizFlow.Application.Tenancy.CompanyRegistrationQuery>();
+builder.Services.AddScoped<BizFlow.Application.Tenancy.ICompanyRegistrationReader, BizFlow.Infrastructure.Tenancy.CompanyRegistrationReader>();
+builder.Services.AddScoped<BizFlow.Application.Tenancy.CompanyRegistrationManagement>();
+builder.Services.AddScoped<BizFlow.Application.Tenancy.ICompanyProvisioningStore, BizFlow.Infrastructure.Tenancy.CompanyProvisioningStore>();
+builder.Services.AddScoped<TenantMembershipAuthorizer>();
+builder.Services.AddScoped<BizFlow.Application.Organization.DepartmentQuery>();
+builder.Services.AddScoped<BizFlow.Application.Organization.IDepartmentReader, BizFlow.Infrastructure.Organization.DepartmentReader>();
+builder.Services.AddScoped<BizFlow.Application.Organization.DepartmentManagement>();
+builder.Services.AddScoped<BizFlow.Application.Organization.IDepartmentManagementStore, BizFlow.Infrastructure.Organization.DepartmentManagementStore>();
+builder.Services.AddScoped<BizFlow.Application.Organization.RoleManagement>();
+builder.Services.AddScoped<BizFlow.Application.Organization.IRoleStore, BizFlow.Infrastructure.Organization.RoleStore>();
+builder.Services.AddScoped<BizFlow.Application.Organization.UserDirectoryQuery>();
+builder.Services.AddScoped<BizFlow.Application.Organization.UserManagement>();
+builder.Services.AddScoped<BizFlow.Application.Organization.IUserManagementStore, BizFlow.Infrastructure.Organization.UserManagementStore>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.TaskListQuery>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.TaskCreation>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.TaskAssignmentCommand>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.TaskAcceptanceCommand>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.TaskExecutionCommand>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.TaskSubmissionCommand>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.TaskConfirmationCommand>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.ITaskExecutionStore, BizFlow.Infrastructure.Tasks.TaskExecutionStore>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.ITaskSubmissionStore, BizFlow.Infrastructure.Tasks.TaskSubmissionStore>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.ITaskConfirmationStore, BizFlow.Infrastructure.Tasks.TaskConfirmationStore>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.ITaskAcceptanceStore, BizFlow.Infrastructure.Tasks.TaskAcceptanceStore>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.ITaskAssignmentStore, BizFlow.Infrastructure.Tasks.TaskAssignmentStore>();
+builder.Services.AddScoped<BizFlow.Domain.Workflows.IWorkflowEngine, BizFlow.Domain.Workflows.TaskWorkflowEngine>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.ITaskCreationStore, BizFlow.Infrastructure.Tasks.TaskCreationStore>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.TaskDetailQuery>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.ITaskDetailReader, BizFlow.Infrastructure.Tasks.TaskDetailReader>();
+builder.Services.AddScoped<BizFlow.Application.Tasks.ITaskListReader, BizFlow.Infrastructure.Tasks.TaskListReader>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestListQuery>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestCreation>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestSubmissionCommand>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestRoutingCommand>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestReceiptCommand>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestProcessingCommand>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestRejectionCommand>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestCancellationCommand>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestResolutionCommand>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestConfirmationCommand>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestReviseCommand>();
+builder.Services.AddScoped<BizFlow.Application.Requests.RequestDetailQuery>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestCreationStore, BizFlow.Infrastructure.Requests.RequestCreationStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestSubmissionStore, BizFlow.Infrastructure.Requests.RequestSubmissionStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestRoutingStore, BizFlow.Infrastructure.Requests.RequestRoutingStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestReceiptStore, BizFlow.Infrastructure.Requests.RequestReceiptStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestProcessingStore, BizFlow.Infrastructure.Requests.RequestProcessingStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestRejectionStore, BizFlow.Infrastructure.Requests.RequestRejectionStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestCancellationStore, BizFlow.Infrastructure.Requests.RequestCancellationStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestResolutionStore, BizFlow.Infrastructure.Requests.RequestResolutionStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestConfirmationStore, BizFlow.Infrastructure.Requests.RequestConfirmationStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestReviseStore, BizFlow.Infrastructure.Requests.RequestReviseStore>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestListReader, BizFlow.Infrastructure.Requests.RequestListReader>();
+builder.Services.AddScoped<BizFlow.Application.Requests.IRequestDetailReader, BizFlow.Infrastructure.Requests.RequestDetailReader>();
+builder.Services.AddScoped<BizFlow.Application.Organization.IUserDirectoryReader, BizFlow.Infrastructure.Organization.UserDirectoryReader>();
+builder.Services.AddScoped<BizFlow.Application.Workflows.WorkflowLibrary>();
+builder.Services.AddScoped<BizFlow.Application.Workflows.IWorkflowLibraryStore, BizFlow.Infrastructure.Workflows.WorkflowLibraryStore>();
+builder.Services.AddScoped<BizFlow.Application.Workflows.IWorkflowRuntimeEngine, BizFlow.Application.Workflows.WorkflowExecutionEngine>();
+builder.Services.AddScoped<BizFlow.Application.Audit.AuditQuery>();
+builder.Services.AddScoped<BizFlow.Application.Sla.SlaProfileCatalog>();
+builder.Services.AddScoped<BizFlow.Application.Sla.ISlaProfileStore, BizFlow.Infrastructure.Sla.SlaProfileStore>();
+builder.Services.AddScoped<BizFlow.Application.Sla.SlaVersionCreation>();
+builder.Services.AddScoped<BizFlow.Application.Services.ServiceCatalog>();
+builder.Services.AddScoped<BizFlow.Application.Services.ServiceCategoryCreation>();
+builder.Services.AddScoped<BizFlow.Application.Services.ServiceMetadataUpdate>();
+builder.Services.AddScoped<BizFlow.Application.Services.IServiceMutationStore, BizFlow.Infrastructure.Services.ServiceMutationStore>();
+builder.Services.AddScoped<BizFlow.Application.Services.IServiceCatalogStore, BizFlow.Infrastructure.Services.ServiceCatalogStore>();
+builder.Services.AddScoped<BizFlow.Application.Sla.SlaVersionHistory>();
+builder.Services.AddScoped<BizFlow.Application.Sla.ISlaVersionHistoryStore, BizFlow.Infrastructure.Sla.SlaVersionHistoryStore>();
+builder.Services.AddScoped<BizFlow.Application.Sla.ISlaVersionStore, BizFlow.Infrastructure.Sla.SlaVersionStore>();
+builder.Services.AddScoped<BizFlow.Application.Notifications.NotificationInbox>();
+builder.Services.AddScoped<BizFlow.Application.Notifications.INotificationInboxStore, BizFlow.Infrastructure.Notifications.NotificationInboxStore>();
+builder.Services.AddScoped<BizFlow.Application.Notifications.IDeadlineReminderStore, BizFlow.Infrastructure.Notifications.DeadlineReminderStore>();
+builder.Services.AddSingleton<BizFlow.Application.Notifications.IVapidKeyProvider, BizFlow.Infrastructure.Notifications.ConfigVapidKeyProvider>();
+builder.Services.AddScoped<BizFlow.Application.Notifications.IEmailNotificationDispatcher, BizFlow.Infrastructure.Notifications.EmailNotificationDispatcher>();
+builder.Services.AddScoped<BizFlow.Application.Notifications.IWebPushDispatcher, BizFlow.Infrastructure.Notifications.WebPushDispatcher>();
+builder.Services.AddScoped<BizFlow.Application.Notifications.IDeadlineReminderService, BizFlow.Application.Notifications.DeadlineReminderService>();
+builder.Services.AddScoped<BizFlow.Application.Collaboration.CommentService>();
+builder.Services.AddScoped<BizFlow.Application.Collaboration.ICommentStore, BizFlow.Infrastructure.Collaboration.CommentStore>();
+builder.Services.AddScoped<BizFlow.Application.Collaboration.ICommentReader, BizFlow.Infrastructure.Collaboration.CommentReader>();
+var storageProvider = builder.Configuration["Storage:Provider"] ?? builder.Configuration["STORAGE_PROVIDER"];
+if (string.Equals(storageProvider, "S3", StringComparison.OrdinalIgnoreCase)
+    || string.Equals(storageProvider, "MinIO", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpClient<BizFlow.Application.Collaboration.IObjectStorageProvider, BizFlow.Infrastructure.Collaboration.S3CompatibleStorageProvider>();
+}
+else
+{
+    builder.Services.AddScoped<BizFlow.Application.Collaboration.IObjectStorageProvider, BizFlow.Infrastructure.Collaboration.LocalStorageProvider>();
+}
+
+builder.Services.AddSingleton<BizFlow.Application.Common.IBizFlowCacheService, BizFlow.Infrastructure.Caching.BizFlowRedisCacheService>();
+builder.Services.AddScoped<BizFlow.Application.Collaboration.IAttachmentStore, BizFlow.Infrastructure.Collaboration.AttachmentStore>();
+builder.Services.AddScoped<BizFlow.Application.Collaboration.IAttachmentReader, BizFlow.Infrastructure.Collaboration.AttachmentReader>();
+builder.Services.AddScoped<BizFlow.Application.Collaboration.AttachmentService>();
+builder.Services.AddScoped<BizFlow.Application.Collaboration.IRecordArchivalStore, BizFlow.Infrastructure.Collaboration.RecordArchivalStore>();
+builder.Services.AddScoped<BizFlow.Application.Collaboration.IRecordSearchReader, BizFlow.Infrastructure.Collaboration.RecordSearchReader>();
+builder.Services.AddScoped<BizFlow.Application.Collaboration.RecordService>();
+builder.Services.AddScoped<BizFlow.Application.Reports.IReportingReader, BizFlow.Infrastructure.Reports.ReportingReader>();
+builder.Services.AddScoped<BizFlow.Application.Reports.ReportingService>();
+builder.Services.AddHttpClient<BizFlow.Application.AI.IAiModelClient, BizFlow.Infrastructure.AI.OpenAiModelClient>();
+builder.Services.AddHttpClient<BizFlow.Application.AI.IAiEmbeddingService, BizFlow.Infrastructure.AI.AiEmbeddingService>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiVectorMemoryStore, BizFlow.Infrastructure.AI.AiVectorMemoryStore>();
+builder.Services.AddScoped<BizFlow.Application.AI.IProactiveAgentScanner, BizFlow.Infrastructure.AI.ProactiveAgentScanner>();
+builder.Services.AddHostedService<BizFlow.Infrastructure.AI.ProactiveAgentDaemon>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiSelfReflectionService, BizFlow.Infrastructure.AI.AiSelfReflectionService>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiStore, BizFlow.Infrastructure.AI.AiStore>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiContextReader, BizFlow.Infrastructure.AI.AiContextReader>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<BizFlow.Application.AI.IAiToolRegistry, BizFlow.Infrastructure.AI.AiToolRegistry>();
+builder.Services.AddSingleton<BizFlow.Application.AI.IAiConfirmationTokenService, BizFlow.Infrastructure.AI.AiConfirmationTokenService>();
+builder.Services.AddScoped<BizFlow.Application.AI.IRequestSplitStore, BizFlow.Infrastructure.AI.RequestSplitStore>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiActionDispatcher, BizFlow.Infrastructure.AI.AiActionDispatcher>();
+builder.Services.AddScoped<BizFlow.Application.AI.AiAssistanceService>();
+builder.Services.AddScoped<BizFlow.Application.AI.ITaskDecompositionStore, BizFlow.Infrastructure.AI.TaskDecompositionStore>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiTaskDecompositionService, BizFlow.Application.AI.AiTaskDecompositionService>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiBranchingStore, BizFlow.Infrastructure.AI.AiBranchingStore>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiBranchingService, BizFlow.Infrastructure.AI.AiBranchingService>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiDocumentSummarizerStore, BizFlow.Infrastructure.AI.AiDocumentSummarizerStore>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiDocumentSummarizerService, BizFlow.Infrastructure.AI.AiDocumentSummarizerService>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAgentMeetingCoordinator, BizFlow.Infrastructure.AI.AgentMeetingCoordinator>();
+builder.Services.AddScoped<BizFlow.Application.AI.IAiLearnedChoiceStore, BizFlow.Infrastructure.AI.AiLearnedChoiceStore>();
+builder.Services.AddScoped<BizFlow.Application.AI.IConversationStateManager, BizFlow.Infrastructure.AI.ConversationStateManager>();
+builder.Services.AddScoped<BizFlow.Application.AI.IRobotChatService, BizFlow.Application.AI.RobotChatService>();
+builder.Services.AddScoped<BizFlow.Application.Workflows.IWorkflowDocumentAnalysisService, BizFlow.Application.Workflows.WorkflowDocumentAnalysisService>();
+builder.Services.AddScoped<BizFlow.Application.Audit.IAuditReader, BizFlow.Infrastructure.Audit.AuditReader>();
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
+builder.Services.AddProblemDetails();
+builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
+{
+    options.InvalidModelStateResponseFactory = context => new UnprocessableEntityObjectResult(
+        ApiErrors.Create(context.HttpContext, "VALIDATION.FAILED", "Please correct the invalid fields.",
+            context.ModelState.Where(entry => entry.Value?.Errors.Count > 0)
+                // Model-binding exceptions can echo submitted secrets. Expose field names only.
+                .ToDictionary(entry => entry.Key, _ => new[] { "The supplied value is invalid." })));
+}).AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
+});
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
+});
+builder.Services.AddAuthorization();
+builder.Services.AddSignalR(options => options.EnableDetailedErrors = false);
+builder.Services.AddSingleton<BizFlow.Api.Realtime.NotificationConnections>();
+builder.Services.AddScoped<BizFlow.Application.Notifications.INotificationUpdates, BizFlow.Api.Realtime.SignalRNotificationUpdates>();
+builder.Services.AddOpenApi();
+
+var app = builder.Build();
+app.UseSerilogRequestLogging(options => options.EnrichDiagnosticContext = (diagnostics, context) =>
+    diagnostics.Set("TraceId", System.Diagnostics.Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier));
+// Log the final, sanitized response status, not the exception before Application faults are mapped.
+app.UseExceptionHandler();
+app.UseStatusCodePages(async status =>
+    await status.HttpContext.Response.WriteAsJsonAsync(ApiErrors.ForStatus(status.HttpContext)));
+app.UseRouting();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
+// Operational probes do not authenticate or expose tenant/business/dependency details.
+app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
+app.MapGet("/health/ready", HealthEndpoints.ReadyAsync).AllowAnonymous();
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
+app.MapControllers();
+app.MapHub<BizFlow.Api.Realtime.NotificationHub>(BizFlow.Api.Realtime.NotificationHub.Path,
+    options => options.CloseOnAuthenticationExpiration = true);
+
+// Pre-warm database connection, EF Core model compilation, and password hasher asynchronously
+_ = Task.Run(async () =>
+{
+    try
+    {
+        await Task.Delay(100);
+        using var scope = app.Services.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<IAuthenticationStore>();
+        var verifier = scope.ServiceProvider.GetRequiredService<ICredentialVerifier>();
+        await store.FindCandidatesAsync("EMP001", "bizflow-corp", CancellationToken.None);
+        verifier.VerifyDummy("Password123!");
+    }
+    catch { /* Ignore background warmup errors */ }
+});
+
+app.Run();
+
+static void LoadDotEnvIfExists()
+{
+    try
+    {
+        var current = Directory.GetCurrentDirectory();
+        var candidates = new[]
+        {
+            Path.Combine(current, "deploy", ".env"),
+            Path.Combine(current, "..", "deploy", ".env"),
+            Path.Combine(current, "..", "..", "deploy", ".env"),
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "deploy", ".env"),
+            Path.Combine(current, ".env")
+        };
+        foreach (var candidate in candidates)
+        {
+            if (File.Exists(candidate))
+            {
+                foreach (var line in File.ReadAllLines(candidate))
+                {
+                    var trimmed = line.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith('#')) continue;
+                    var sep = trimmed.IndexOf('=');
+                    if (sep <= 0) continue;
+                    var key = trimmed[..sep].Trim();
+                    var val = trimmed[(sep + 1)..].Trim();
+                    if (val.Length > 0 && string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+                    {
+                        Environment.SetEnvironmentVariable(key, val);
+                    }
+                }
+                break;
+            }
+        }
+    }
+    catch
+    {
+        // Ignore dot-env loading exceptions in locked/read-only environments
+    }
+}
+
+public partial class Program;

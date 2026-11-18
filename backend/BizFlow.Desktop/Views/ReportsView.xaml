@@ -1,0 +1,107 @@
+<UserControl x:Class="BizFlow.Desktop.Views.ReportsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="24,18">
+            <DockPanel Margin="0,0,0,14">
+                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Center"
+                        Command="{Binding LoadCommand}" Content="🔄 Cập nhật Báo cáo &amp; SLA" />
+                <StackPanel>
+                    <TextBlock Text="Báo cáo Điều hành, Phân bổ Tải công việc &amp; Giám sát SLA" Style="{StaticResource PageTitleTextStyle}" />
+                    <TextBlock Text="Tổng hợp số liệu trực tiếp từ cơ sở dữ liệu PostgreSQL qua ReportingService." Foreground="#64748B" FontSize="13" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- Executive Summary KPI Row -->
+            <UniformGrid Columns="4" Margin="0,0,0,16">
+                <Border Style="{StaticResource EnterpriseCardStyle}" Margin="0,0,8,0">
+                    <StackPanel>
+                        <TextBlock Text="TỔNG NHIỆM VỤ CÔNG TY" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                        <TextBlock Text="{Binding CompanyReport.TotalTasksCreated, TargetNullValue=0}" FontSize="26" FontWeight="ExtraBold" Foreground="#17436F" Margin="0,4" />
+                        <TextBlock FontSize="12" Foreground="#059669" FontWeight="SemiBold">
+                            <Run Text="Hoàn thành: " /><Run Text="{Binding CompanyReport.TotalTasksCompleted, TargetNullValue=0, Mode=OneWay}" />
+                            <Run Text=" (" /><Run Text="{Binding CompanyReport.TaskCompletionRatePercent, StringFormat=F1, TargetNullValue=0, Mode=OneWay}" /><Run Text="%)" />
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource EnterpriseCardStyle}" Margin="4,0,4,0">
+                    <StackPanel>
+                        <TextBlock Text="TỔNG YÊU CẦU DỊCH VỤ" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                        <TextBlock Text="{Binding CompanyReport.TotalRequestsSubmitted, TargetNullValue=0}" FontSize="26" FontWeight="ExtraBold" Foreground="#145DA0" Margin="0,4" />
+                        <TextBlock FontSize="12" Foreground="#059669" FontWeight="SemiBold">
+                            <Run Text="Đã đóng: " /><Run Text="{Binding CompanyReport.TotalRequestsClosed, TargetNullValue=0, Mode=OneWay}" />
+                            <Run Text=" (" /><Run Text="{Binding CompanyReport.RequestResolutionRatePercent, StringFormat=F1, TargetNullValue=0, Mode=OneWay}" /><Run Text="%)" />
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource EnterpriseCardStyle}" Margin="4,0,4,0">
+                    <StackPanel>
+                        <TextBlock Text="TỶ LỆ TUÂN THỦ SLA" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                        <TextBlock FontSize="26" FontWeight="ExtraBold" Foreground="#059669" Margin="0,4">
+                            <Run Text="{Binding SlaReport.ComplianceRatePercent, StringFormat=F1, TargetNullValue=100, Mode=OneWay}" /><Run Text="%" />
+                        </TextBlock>
+                        <TextBlock FontSize="12" Foreground="#64748B">
+                            <Run Text="Đạt chuẩn: " /><Run Text="{Binding SlaReport.CompliantCount, TargetNullValue=0, Mode=OneWay}" />
+                            <Run Text=" · Vi phạm: " /><Run Text="{Binding SlaReport.BreachedCount, TargetNullValue=0, Mode=OneWay}" Foreground="#DC2626" />
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource EnterpriseCardStyle}" Margin="8,0,0,0">
+                    <StackPanel>
+                        <TextBlock Text="HOẠT ĐỘNG KIỂM TOÁN GẦN ĐÂY" FontSize="11" FontWeight="Bold" Foreground="#64748B" />
+                        <TextBlock Text="{Binding CompanyReport.RecentAuditActivityCount, TargetNullValue=0}" FontSize="26" FontWeight="ExtraBold" Foreground="#071B33" Margin="0,4" />
+                        <TextBlock Text="Sự kiện bảo mật &amp; nghiệp vụ" FontSize="12" Foreground="#64748B" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- Department Metrics & User Workload Tables -->
+            <UniformGrid Columns="2" Margin="0,0,0,14">
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="12" Margin="0,0,6,0">
+                    <StackPanel>
+                        <TextBlock Text="🏢 HIỆU SUẤT THEO PHÒNG BAN (DEPARTMENT METRICS)" Style="{StaticResource SectionTitleTextStyle}" />
+                        <DataGrid ItemsSource="{Binding CompanyDepartmentMetrics}" Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="230">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Phòng ban" Binding="{Binding DepartmentName}" Width="1.6*" FontWeight="SemiBold" />
+                                <DataGridTextColumn Header="Tổng Task" Binding="{Binding TotalTasks}" Width="90" />
+                                <DataGridTextColumn Header="Xong Task" Binding="{Binding CompletedTasks}" Width="90" />
+                                <DataGridTextColumn Header="Tổng Request" Binding="{Binding TotalRequests}" Width="100" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource EnterpriseCardStyle}" Padding="12" Margin="6,0,0,0">
+                    <StackPanel>
+                        <TextBlock Text="👥 PHÂN BỔ KHỐI LƯỢNG CÔNG VIỆC NHÂN SỰ (WORKLOAD)" Style="{StaticResource SectionTitleTextStyle}" />
+                        <DataGrid ItemsSource="{Binding UserWorkloads}" Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="230">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Mã NV" Binding="{Binding EmployeeCode}" Width="90" FontWeight="Bold" />
+                                <DataGridTextColumn Header="Họ và tên" Binding="{Binding FullName}" Width="1.4*" FontWeight="SemiBold" />
+                                <DataGridTextColumn Header="Đang làm" Binding="{Binding ActiveTasks}" Width="80" />
+                                <DataGridTextColumn Header="Hoàn thành" Binding="{Binding CompletedTasks}" Width="90" />
+                                <DataGridTextColumn Header="Quá hạn" Binding="{Binding OverdueTasks}" Width="80" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- SLA Service Breakdown -->
+            <Border Style="{StaticResource EnterpriseCardStyle}" Padding="12">
+                <StackPanel>
+                    <TextBlock Text="⏱️ GIÁM SÁT TUÂN THỦ SLA THEO DỊCH VỤ NỘI BỘ (SLA MONITOR)" Style="{StaticResource SectionTitleTextStyle}" />
+                    <DataGrid ItemsSource="{Binding ServiceSlaBreakdown}" Style="{StaticResource EnterpriseDataGridStyle}" MinHeight="180">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Dịch vụ nội bộ" Binding="{Binding ServiceName}" Width="2*" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Tổng hồ sơ" Binding="{Binding TotalRequests}" Width="120" />
+                            <DataGridTextColumn Header="Đạt chuẩn SLA" Binding="{Binding CompliantRequests}" Width="130" />
+                            <DataGridTextColumn Header="Vi phạm SLA" Binding="{Binding BreachedRequests}" Width="130" />
+                            <DataGridTextColumn Header="Tỷ lệ tuân thủ (%)" Binding="{Binding ComplianceRatePercent, StringFormat=F1}" Width="150" FontWeight="Bold" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

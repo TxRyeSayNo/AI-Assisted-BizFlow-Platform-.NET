@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5154",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ConnectionStrings__BizFlow": "Host=127.0.0.1;Port=5433;Database=bizflow;Username=bizflow;Password=bizflow_secret_123",
+        "Jwt__Issuer": "BizFlow",
+        "Jwt__Audience": "BizFlow.Web",
+        "Jwt__SigningKeyBase64": "Loizdg9h99sl7lZJSV1LJwNCNTIdi7PjAtR3yib+brk="
+      }
+    }
+  }
+}
